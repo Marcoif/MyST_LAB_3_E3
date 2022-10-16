@@ -28,4 +28,35 @@ def f_leer_archivo(ruta_archivo):
 
     return archivo
 
+#Funcion del tamaño de los pips por si no la tenemos en el codigo ver cuanto valen los contratos segun el activo
+def f_pip_size(ticker_f):
+    instruments = dt.instruments
+
+    ticker_up = ticker_f.upper()
+    if ticker_up == 'WTICO':
+
+        indx = np.concatenate(np.where(ticker_up == instruments.index))[0]
+        temp = instruments['PipLocation'].iloc[indx]
+        if temp == -4:
+            mult = 10000
+        elif temp == -2:
+            mult = 100
+        elif temp == 0:
+            mult = 1
+    elif ticker_up == 'BTCUSD':
+        mult = 100
+
+    else:
+        ticker_up = ticker_up[:3] + '.' + ticker_up[3:]  # ponemos todos en mayusculas
+
+        indx = np.concatenate(np.where(ticker_up == instruments.index))[0]
+        temp = instruments['PipLocation'].iloc[indx]
+        if temp == -4:
+            mult = 10000
+        elif temp == -2:
+            mult = 100
+        elif temp == 0:
+            mult = 1
+    return mult
+
 
