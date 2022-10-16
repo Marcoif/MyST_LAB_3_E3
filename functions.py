@@ -59,4 +59,11 @@ def f_pip_size(ticker_f):
             mult = 1
     return mult
 
-
+#Funcion para agregar las columnas que creamos en el data frame principal
+def f_columnas_tiempos(df_data):
+    open_time = pd.to_datetime(df_data['Open Time'])
+    close_time = pd.to_datetime(df_data['Close Time'])
+    delta = [(close_time[i] - open_time[i]).total_seconds() for i in range(len(df_data['Open Time']))]
+    # Hay que regresar todo el data frame
+    df_data['Tiempo'] = delta
+    return df_data
