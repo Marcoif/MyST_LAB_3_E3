@@ -67,3 +67,40 @@ def f_columnas_tiempos(df_data):
     # Hay que regresar todo el data frame
     df_data['Tiempo'] = delta
     return df_data
+
+#Hacer las condiciones de las posiciones y los pips
+def f_columnas_pips(archivo):
+    pips = []
+    pips_acum = []
+    profit_acum = []
+    for i in range(len(archivo)):
+        if i == 0:
+            if archivo['Type'].iloc[i] == 'buy':
+                pips.append(
+                    (archivo['Close Price'].iloc[i] - archivo['Price'].iloc[i]) * f_pip_size(
+                        archivo['Item'].iloc[i]))
+            else:
+                pips.append(
+                    (archivo['Price'].iloc[i] - archivo['Close Price'].iloc[i]) * f_pip_size(
+                        archivo['Item'].iloc[i]))
+            pips_acum.append(pips[0])
+            profit_acum.append(archivo['Profit'].iloc[0])
+
+        else:
+            if archivo['Type'].iloc[i] == 'sell':
+                pips.append(
+                    (archivo['Close Price'].iloc[i] - archivo['Price'].iloc[i]) * f_pip_size(
+                        archivo['Item'].iloc[i]))
+
+            else:
+                pips.append(
+                    (archivo['Price'].iloc[i] - archivo['Close Price'].iloc[i]) * f_pip_size(
+                        archivo['Item'].iloc[i]))
+
+            pips_acum.append(pips_acum[i - 1] + pips[i])
+            profit_acum.append(profit_acum[i - 1] + archivo['Profit'].iloc[i])
+
+    archivo['pips'] = pips
+    archivo['pips_acum'] = pips_acum
+    archivo['profit_acum'] = profit_acum
+    return archivo
