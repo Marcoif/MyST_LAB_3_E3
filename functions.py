@@ -167,3 +167,108 @@ def f_estadisticas_ba(archivo):
 
     final = {'df_1_tabla': df, 'df_2_ranking': df_2}
     return final
+
+
+#Codigo que hace el behavioral finance
+
+
+def cumulative_capital(param_data):
+
+    param_data = f_columnas_pips(param_data)
+    param_data["capital_acm"] = param_data['profit_acm']+5000 # creación de nueva columna para param_data
+
+    return param_data
+
+
+def f_be_de (param_data):
+
+    param_data = cumulative_capital(param_data)
+    status = lambda profit: "Win" if profit >0 else "Lose"
+    param_data["status"] = list(status(i) for i in param_data["profit"])#asignación de situación (ganancia o perdida) de cada operacion
+    ratio = lambda trade_status,desired_status,trade_profit, c_capital: (trade_profit/c_capital)*100 if trade_status==desired_status else 0
+    param_data["profit"]= list(float(i) for i in param_data["profit"]) #conversión a flotante de la columna profit
+    param_data["capital_acm"]=list(float(i) for i in param_data["capital_acm"])#conversión a flotante de la columna capital_acm
+
+    param_data["ratio_cp_capital_acm"]=list(ratio(param_data["status"][i],"Lose",param_data["profit"][i],param_data["capital_acm"][i])for i in range(len(param_data))) # ratio para operaciones perdedoras
+    param_data["ratio_cg_capital_acm"]=list(ratio(param_data["status"][i],"Win",param_data["profit"][i],param_data["capital_acm"][i])for i in range(len(param_data)))# ratio para operaciones ganadoras
+
+
+
+    winners= param_data.loc[param_data["status"] =="Win"] # filtrado por tipo operación
+    winners= winners.reset_index(drop=True)
+    losers= param_data.loc[param_data["status"]=="Lose"]
+    losers = losers.reset_index(drop=True)
+    ocurrencias = 0
+
+
+    info_sesgo={'Ocurrencias': # estructura básica del diccionario de salida
+                       {'Cantidad':ocurrencias,
+                        'Operaciones':{}
+                        },#llave de ocurrencias y operaciones
+
+           'Resultados':{}
+
+    }
+    timestamp_ocurrencia = 0
+    operacion=0
+    ocurrencias=0
+    pd_resultados={"Ocurrencias":{},"status_quo":{},"aversion_perdida":{},"sensibilidad_decreciente":{} }#diccionario para llave "Resultados"
+    count_status = 0
+    count_aversion = 0
+    for i in range(len(winners)):
+        winner = winners.iloc[i]
+        for j in range(len(losers)):
+            closeDate_winner = winner["closetime"]
+            loser = losers.iloc[j]
+            date_range = pd.date_range(loser["opentime"],loser["closetime"],freq="D") # periodo de tiempo en el que una operación perdedora estuvo abierta
+            if closeDate_winner in date_range:
+                ocurrencias+=1
+                timestamp_ocurrencia = closeDate_winner # fecha de cierre de operación ganadora que incurre en el sesgo
+                info_sesgo["Ocurrencias"]["Timestamp"] = timestamp_ocurrencia
+                operacion ={'Operaciones': {'Ganadora': {'instrumento':winner["symbol"],'Volumen':winner["size"],
+                                                         'Sentido':winner["type"], "Capital_ganadora":winner["profit"]
+                                                         }# registro de operación ganadora
+
+
+                    ,'Perdedora': {'instrumento':loser["symbol"],'Volumen':loser["size"],
+                                                         'Sentido':loser["type"], "Capital perdedora":loser["profit"]
+                                                         } # registro de operación perdedora
+                                            }  # llave operaciones
+                            ,"ratio_cp_capital_acm":loser["ratio_cp_capital_acm"],
+                            "ratio_cg_capital_acm":winner["ratio_cg_capital_acm"],
+                            "ratio_cp_cg" : loser["profit"]/winner["profit"]
+                            } #llave operacion
+                if np.abs(loser["profit"])/loser["capital_acm"] < winner["profit"]/winner["capital_acm"]:
+                    count_status+=1 # conteo para futuro cálculo de ratio
+                if np.abs(loser["profit"])/winner["profit"]>1.5:
+                    count_aversion+=1 # conteo para futuro cálculo de ratio
+
+            info_sesgo["Ocurrencias"]["Cantidad"]=ocurrencias
+            numero_operacion = "Ocurrencia_"+str(ocurrencias) # se crea la nueva llave
+            info_sesgo["Ocurrencias"]["Operaciones"][numero_operacion] =operacion  # se anexa cada operación que cumpla con el criterio
+            pd_resultados["Ocurrencias"] = ocurrencias # contador de ocurrencias
+
+
+
+
+    loser = losers["profit"].min()# operacion mas perdedora
+    winner = winners["profit"].max() # operacion mas ganadora
+
+    pd_resultados["status_quo"] = (count_status / ocurrencias) * 100
+    pd_resultados["aversion_perdida"] = (count_aversion / ocurrencias) * 100
+
+
+
+
+    #criterios para determinar sensibildiad decreciente
+    positive_change= winners["capital_acm"].iloc[0]<winners["capital_acm"].iloc[-1]
+    profit_change = winners["profit"].iloc[0]>winners["profit"].iloc[-1] or np.abs(losers["profit"].iloc[0])>np.abs(losers["profit"].iloc[-1])
+    ratio = loser/winner>1.5
+    sensibilidad_decreciente = False
+    if positive_change== True and ratio == True and profit_change==True:
+        sensibilidad_decreciente=True
+    pd_resultados["sensibilidad_decreciente"]=sensibilidad_decreciente
+    pd_resultados=pd.DataFrame(data=pd_resultados,index=[0])
+    info_sesgo["Resultados"]=pd_resultados
+
+    return info_sesgo
