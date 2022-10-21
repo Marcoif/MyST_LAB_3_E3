@@ -104,3 +104,66 @@ def f_columnas_pips(archivo):
     archivo['pips_acum'] = pips_acum
     archivo['profit_acum'] = profit_acum
     return archivo
+
+
+#Codigo que nos hara el tema de las estadisticas de todas nuestras operaciones
+def f_estadisticas_ba(archivo):
+    medida = ['Ops totales', 'Ganadoras', 'Ganadoras_c', 'Ganadoras_v',
+              'Perdedoras', 'Perdedoras_c', 'Perdedoras_v', 'Mediana (Profit)', 'Mediana (Pips)', 'r_efectividad',
+              'r_proporcion',
+              'r_efectividad_c', 'r_efectividad_v']  # hacemos una lista con todo lo necesario en medida
+
+    ops_totales = len(archivo)
+    Ganadoras = np.sum([True for i in range(len(archivo)) if archivo['Profit'].iloc[i] > 0])
+    Ganadoras_c = np.sum(
+        [True for i in range(len(archivo)) if archivo['Profit'].iloc[i] > 0 and archivo['Type'].iloc[i] == 'buy'])
+    Ganadoras_v = np.sum(
+        [True for i in range(len(archivo)) if archivo['Profit'].iloc[i] > 0 and archivo['Type'].iloc[i] == 'sell'])
+    Perdedoras = np.sum([True for i in range(len(archivo)) if archivo['Profit'].iloc[i] < 0])
+    Perdedoras_c = np.sum(
+        [True for i in range(len(archivo)) if archivo['Profit'].iloc[i] < 0 and archivo['Type'].iloc[i] == 'buy'])
+    Perdedoras_v = np.sum(
+        [True for i in range(len(archivo)) if archivo['Profit'].iloc[i] < 0 and archivo['Type'].iloc[i] == 'sell'])
+    mediana_profit = np.median(archivo['Profit'])
+    mediana_pips = np.median(archivo['pips'])
+    r_efectividad = Ganadoras / ops_totales
+    r_proporcion = Ganadoras / Perdedoras
+    r_efectividad_c = Ganadoras_c / ops_totales
+    r_efectividad_v = Ganadoras_v / ops_totales
+
+    valor = [ops_totales, Ganadoras, Ganadoras_c, Ganadoras_v, Perdedoras, Perdedoras_c, Perdedoras_v, mediana_profit,
+             mediana_pips, r_efectividad, r_proporcion, r_efectividad_c, r_efectividad_v]
+
+    descripcion = ['Operaciones totales', 'Operaciones ganadoras', 'Operaciones ganadoras de compra',
+                   'Operaciones ganadoras de venta',
+                   'Operaciones perdedoras', 'Operaciones perdedoras de compra', 'Operaciones perdedoras de venta',
+                   'Mediana de profit de operaciones', 'Mediana de pips de operaciones',
+                   'Ganadoras Totales/Operaciones Totales',
+                   'Ganadoras Totales/Perdedoras Totales', 'Ganadoras Compras/Operaciones Totales',
+                   'Ganadoras Ventas/Operaciones Totales']
+
+    df = pd.DataFrame({'medida': medida, 'valor': valor, 'descripcion': descripcion})
+    df
+
+    # antes que nada hay obtener los tickers unicos
+
+    unicos = np.unique(archivo['Item'])  # listo ya tenemos los unicos
+    rank = []
+    for i in range(len(unicos)):
+        positives = 0
+        negatives = 0
+        for j in range(len(archivo)):
+            if unicos[i] == archivo['Item'].iloc[j] and archivo['Profit'].iloc[j] > 0:
+                positives += 1
+            elif unicos[i] == archivo['Item'].iloc[j] and archivo['Profit'].iloc[j] < 0:
+
+                negatives += 1
+
+        total = negatives + positives
+        rank.append(positives / total)
+
+    df_2 = pd.DataFrame({'symbol': unicos, 'rank': rank})
+    df_2 = df_2.sort_values(by='rank', ascending=False)
+
+    final = {'df_1_tabla': df, 'df_2_ranking': df_2}
+    return final
